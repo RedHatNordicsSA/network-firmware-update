@@ -1,0 +1,15 @@
+---
+- name: Update firmware on Cisco device
+  hosts: all
+  vars:
+    firmware_versions = "1.3"
+    firmware_file_name = "firmware-update-1.3"
+    firmware_file_md5 = "eb1a3227cdc3fedbaec2fe38bf6c044a"
+  tasks:
+  - name: Verify md5sum of firmware
+    ping:
+      data: 
+      
+  - name: Verify firmware on device
+    ios_command: "verify /md5 {{ firmware_file_name }} {{ firmware_file_md5sum }}"
+    
