@@ -6,14 +6,7 @@
     firmware_dir: "/home/student1"
     firmware_file_name: "firmware-update-1.4"
     firmware_file_path: "{{ firmware_dir }}/{{ firmware_file_name }}"
-  tasks:
-  
-  - name: Debug
-    command: ls -la
-   
-  - name: Debug
-    command: pwd
-  
+  tasks:  
   - name: Fetch md5 from file
     set_fact:
       md5_value: "{{ lookup('file', '{{ firmware_file_path }}.md5') }}"
@@ -71,7 +64,7 @@
         msg: "Current version {{ ansible_net_version }} is valid"
       when: ( ansible_net_version == upgrade_ios_version )
 
-    - name: Backup Running Config  
+    - name: Backup running config on {{ inventory_hostname }} 
       ios_command:
         commands: show run  
       register: config
@@ -85,7 +78,7 @@
       ios_config:
         save_when: always 
 
-    - name: Copy new firmware to switch
+    - name: Copy new firmware to {{ inventory_hostname }}
       net_put: 
         src: "{{ firmware_file_path }}"
         dest: "flash:/{{ firmware_file_name }}"
@@ -96,4 +89,23 @@
     - name: Validate firmware on switch
       ios_command: 
         commands: verify /md5 {{ firmware_file_name }} {{ hostvars['localhost']['firmware_md5'] }}
+        
+    - name: Change boot to new firmware: {{ firmware_file_name }}
+      debug:
+        msg: "Booting from {{ firmware_file_name }} next."
+        
+    - name: Reload {{ inventory_hostname }}
+      cli_command: 
+        command: reload
+        prompt: 
+          - confirm
+        answer: 
+          - 'y'
+       
+    - name: Wait for device to come back online
+      wait_for:
+        host: "{{ inventory_hostname }}"
+        port: 22
+        delay: 90
+      delegate_to: localhost
     
