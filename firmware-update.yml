@@ -90,7 +90,7 @@
       ios_command: 
         commands: verify /md5 {{ firmware_file_name }} {{ hostvars['localhost']['firmware_md5'] }}
         
-    - name: Change boot to new firmware: {{ firmware_file_name }}
+    - name: Change boot to new firmware
       debug:
         msg: "Booting from {{ firmware_file_name }} next."
         
