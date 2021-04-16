@@ -7,6 +7,13 @@
     firmware_file_name: "firmware-update-1.4"
     firmware_file_path: "{{ firmware_dir }}/{{ firmware_file_name }}"
   tasks:
+  
+  - name: Debug
+    command: ls -la
+   
+  - name: Debug
+    command: pwd
+  
   - name: Fetch md5 from file
     set_fact:
       md5_value: "{{ lookup('file', '{{ firmware_file_path }}.md5') }}"
