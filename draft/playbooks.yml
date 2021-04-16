@@ -1,20 +1,21 @@
 ---
-- name: Update firmware on Cisco device
+- name: Validate firmware on firmware system and prereqs
   hosts: localhost
   vars:
-    cisco_version: "1.3"
+    backup_dir: "/home/student1/backup"
     firmware_dir: "/home/student1"
-    firmware_version: "1.3"
-    firmware_file_name: "firmware-update-1.3"
+    firmware_file_name: "firmware-update-1.4"
     firmware_file_path: "{{ firmware_dir }}/{{ firmware_file_name }}"
   tasks:
-  - set_fact:
+  - name: Fetch md5 from file
+    set_fact:
       md5_value: "{{ lookup('file', '{{ firmware_file_path }}.md5') }}"
 
-  - debug:
+  - name:
+    debug:
       msg: "Firmware md5 is: {{ md5_value }}"
 
-  - name: Calculate checksum from file
+  - name: Calculate md5 checksum from file
     stat:
       path: "{{ firmware_file_path }}"
       checksum_algorithm: md5
@@ -25,6 +26,67 @@
       msg: "Calculated: {{ firmware.stat.checksum }}"
 
   - debug:
-      msg: "Firmware has an invalid checksum"
-    when: ( firmware.stat.checksum != md5_value )
+      msg: "Firmware is valid"
+    when: ( firmware.stat.checksum == md5_value )
 
+  - set_fact:
+      valid_firmware: "{{ firmware_file_path }}"
+      firmware_md5: "{{ md5_value }}"
+    when: ( firmware.stat.checksum == md5_value )
+
+- name: Backup prereqs
+  hosts: localhost
+  vars:
+    backup_dir: "/home/student1/backup"
+  tasks:
+    - name: Create Directory {{ backup_dir}}
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+      run_once: true
+
+- name: Backup running config
+  hosts: rtr1
+  vars:
+    upgrade_ios_version: 16.09.02
+    firmware_dir: "/home/student1"
+    firmware_file_name: "firmware-update-1.4"
+    firmware_file_path: "{{ firmware_dir }}/{{ firmware_file_name }}"
+    backup_dir: "/home/student1/backup"
+  tasks:
+    - debug: var=hostvars['localhost']['firmware_md5']
+      when: hostvars['localhost']['firmware_md5'] is defined
+
+    - name: Gather facts
+      ios_facts:
+
+    - debug:
+        msg: "Current version {{ ansible_net_version }} is valid"
+      when: ( ansible_net_version == upgrade_ios_version )
+
+    - name: Backup Running Config  
+      ios_command:
+        commands: show run  
+      register: config
+
+    - name: Save output to {{ backup_dir }}
+      copy:
+        content: "{{config.stdout[0]}}"
+        dest: "{{ backup_dir }}/{{ inventory_hostname }}-config.txt"
+
+    - name: Save running config 
+      ios_config:
+        save_when: always 
+
+    - name: Copy new firmware to switch
+      net_put: 
+        src: "{{ firmware_file_path }}"
+        dest: "flash:/{{ firmware_file_name }}"
+      vars: 
+        ansible_command_timeout: 600
+      when: hostvars['localhost']['firmware_md5'] is defined
+
+    - name: Validate firmware on switch
+      ios_command: 
+        commands: verify /md5 {{ firmware_file_name }} {{ hostvars['localhost']['firmware_md5'] }}
+    
