@@ -11,17 +11,17 @@
     set_fact:
       md5_value: "{{ lookup('file', '{{ firmware_file_path }}.md5') }}"
 
-  - name:
+  - name: Printing expected md5 sum for firmware file (fetched from vendor)
     debug:
       msg: "Firmware md5 is: {{ md5_value }}"
 
-  - name: Calculate md5 checksum from file
+  - name: Calculating md5 checksum from file
     stat:
       path: "{{ firmware_file_path }}"
       checksum_algorithm: md5
     register: firmware
 
-  - name:
+  - name: Printing calculated checksum for firmware
     debug:
       msg: "Calculated: {{ firmware.stat.checksum }}"
 
@@ -29,7 +29,8 @@
       msg: "Firmware is valid"
     when: ( firmware.stat.checksum == md5_value )
 
-  - set_fact:
+  - name: Validating calculated checksum with expected checksum
+    set_fact:
       valid_firmware: "{{ firmware_file_path }}"
       firmware_md5: "{{ md5_value }}"
     when: ( firmware.stat.checksum == md5_value )
@@ -54,13 +55,14 @@
     firmware_file_path: "{{ firmware_dir }}/{{ firmware_file_name }}"
     backup_dir: "/home/student1/backup"
   tasks:
-    - debug: var=hostvars['localhost']['firmware_md5']
-      when: hostvars['localhost']['firmware_md5'] is defined
+#    - debug: var=hostvars['localhost']['firmware_md5']
+#      when: hostvars['localhost']['firmware_md5'] is defined
 
     - name: Gather facts
       ios_facts:
 
-    - debug:
+    - name: Validating switch firmware version
+      debug:
         msg: "Current version {{ ansible_net_version }} is valid"
       when: ( ansible_net_version == upgrade_ios_version )
 
