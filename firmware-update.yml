@@ -1,6 +1,6 @@
 ---
 - name: Validate firmware on firmware system and prereqs
-  hosts: ansible-1
+  hosts: localhost
   vars:
     backup_dir: "/home/student1/backup"
     firmware_dir: "/home/student1"
@@ -35,7 +35,7 @@
     when: ( firmware.stat.checksum == md5_value )
 
 - name: Backup prereqs
-  hosts: ansible-1
+  hosts: localhost
   vars:
     backup_dir: "/home/student1/backup"
   tasks:
